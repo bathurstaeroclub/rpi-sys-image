@@ -1,0 +1,104 @@
+name: build
+
+on: [push, workflow_dispatch]
+
+env:
+  PACKER_VERSION: v1.11.1
+  LIBARCHIVE_VERSION: 3.7.4
+  GO_VERSION: '^1.21.6'
+  PACKER_CACHE_DIR: ~/packer_cache/
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        host:
+        - path: ./hosts/raspi5/aarch64.json
+          imgName: raspberry-pi5-aarch64.img
+
+    steps:
+    # CODE
+    - uses: actions/checkout@v4
+    # TOOLS
+    - uses: actions/setup-go@v5
+      with:
+        go-version: ${{ env.GO_VERSION }}
+        check-latest: true
+        cache: true
+
+    - name: Setup `packer`
+      uses: hashicorp/setup-packer@v3.1.0
+      id: setup
+      with:
+        version: ${{ env.PACKER_VERSION }} # or `latest`
+    # Caches
+    - name: Current Month Var
+      run: echo "date=$(date +'%m-%Y')" >> $GITHUB_OUTPUT
+
+      id: cache
+    - name: Cache libarchive build
+      uses: actions/cache@v4
+      with:
+        path: ./libarchive-${{env.LIBARCHIVE_VERSION}}
+        key: ${{ runner.os }}-${{ matrix.host.imgName }}-libarchive-${{env.LIBARCHIVE_VERSION}}
+    - name: Cache images
+      uses: actions/cache@v4
+      with:
+        path: ${{ env.PACKER_CACHE_DIR }}
+        key: ${{ runner.os }}-${{ matrix.host.imgName }}-${{ steps.cache.outputs.date }}-packer_cache-1
+    - name: Cache go build
+      uses: actions/cache@v4
+      with:
+        path: ~/.cache/go-build
+        key: ${{ runner.os }}-${{ matrix.host.imgName }}-go-build
+
+    # Installs
+    - name: install libarchive
+      shell: bash
+      run: |
+        sudo ./build-bsdtar.sh $LIBARCHIVE_VERSION
+    - name: install deps
+      shell: bash
+      run: |
+        sudo apt-get update
+        sudo apt install qemu-user-static util-linux gdisk e2fsprogs
+    - name: install packer plugins
+      shell: bash
+      run: |
+        ./build-packer.sh ${{ env.PACKER_VERSION }}
+
+    - name: find qemu_binary
+      shell: bash
+      run: ls -la /usr/bin/ | grep qemu
+
+    # Build
+    - name: run packer
+      shell: bash
+      run: |
+        sudo packer build -var-file ${{ matrix.host.path }} packer.json
+
+    # pack
+    - name: archive + compress image
+      shell: bash
+      run: |
+        tar --sparse -vczf ${{ matrix.host.imgName }}.tar.gz ./${{ matrix.host.imgName }}
+        md5sum ${{ matrix.host.imgName }}.tar.gz > ${{ matrix.host.imgName }}.tar.gz.md5
+
+    # cleanup
+    - name: cleanup cache
+      shell: bash
+      run: |
+        sudo rm -rf packer_cache/*.lock
+
+    # Upload
+    - uses: actions/upload-artifact@v4
+      with:
+        name: ${{ matrix.host.imgName }}.tar.gz
+        path: ${{ matrix.host.imgName }}.tar.gz
+    - uses: actions/upload-artifact@v4
+      with:
+        name: ${{ matrix.host.imgName }}.tar.gz.md5
+        path: ${{ matrix.host.imgName }}.tar.gz.md5

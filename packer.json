@@ -1,0 +1,90 @@
+{
+  "variables": {
+    "hostname": "bac_ctaf_stream",
+    "username": "bac",
+    "github_keys": "https://github.com/bathurstaeroclub.keys",
+    "git_user_email": "info@bathurstaeroclub.com.au",
+    "git_user_name": "Bathurst Aero Club",
+    "size": "2G",
+    "img_url": "http://os.archlinuxarm.org/os/ArchLinuxARM-rpi-3-latest.tar.gz",
+    "file_unarchive_bin": "bsdtar",
+    "file_unarchive_flags": "-xpf",
+    "img_name": "raspberry-pi3.img",
+    "qemu_binary": "/usr/bin/qemu-aarch64-static",
+    "pi4_alt_fstab": "false",
+    "lockdown_root": "false",
+    "pi4_bootloader": "false",
+    "pi5_bootloader": "false",
+    "cm4_usb": "false"
+  },
+  "builders": [{
+    "type": "cross",
+    "file_urls" : ["{{user `img_url`}}"],
+    "file_checksum_url": "{{user `img_url`}}.md5",
+    "file_checksum_type": "md5",
+    "file_unarchive_cmd": ["{{user `file_unarchive_bin`}}", "{{user `file_unarchive_flags`}}", "$ARCHIVE_PATH", "-C", "$MOUNTPOINT"],
+    "file_target_extension": "tar.gz",
+    "image_build_method": "new",
+    "image_path": "{{user `img_name`}}",
+    "image_size": "{{user `size`}}",
+    "image_type": "dos",
+    "image_partitions": [
+      {
+        "name": "boot",
+        "type": "b",
+        "start_sector": "2048",
+        "filesystem": "vfat",
+        "size": "256M",
+        "mountpoint": "/boot"
+      },
+      {
+        "name": "root",
+        "type": "83",
+        "start_sector": "526336",
+        "filesystem": "ext4",
+        "size": "0",
+        "mountpoint": "/"
+      }
+    ],
+    "qemu_binary_source_path": "{{user `qemu_binary`}}",
+    "qemu_binary_destination_path": "{{user `qemu_binary`}}"
+  }],
+  "provisioners": [
+    {
+      "type": "file",
+      "source": "artefacts/resizerootfs",
+      "destination": "/tmp/resizerootfs"
+    },
+    {
+      "type": "file",
+      "source": "artefacts/resizerootfs.service",
+      "destination": "/tmp/resizerootfs.service"
+    },
+    {
+      "type": "file",
+      "source": "artefacts/mac-host",
+      "destination": "/tmp/mac-host"
+    },
+    {
+      "type": "file",
+      "source": "artefacts/mac-host.service",
+      "destination": "/tmp/mac-host.service"
+    },
+    {
+      "type": "shell",
+      "script": "bootstrap.sh",
+      "environment_vars": [
+        "HOSTNAME={{user `hostname`}}",
+        "USERNAME={{user `username`}}",
+        "GITHUB_KEYS={{user `github_keys`}}",
+        "GIT_USER_NAME={{user `git_user_name`}}",
+        "GIT_USER_EMAIL={{user `git_user_email`}}",
+        "PI4_ALT_FSTAB={{user `pi4_alt_fstab`}}",
+        "LOCKDOWN_ROOT={{user `lockdown_root`}}",
+        "PI4_BOOTLOADER={{user `pi4_bootloader`}}",
+        "PI5_BOOTLOADER={{user `pi5_bootloader`}}",
+        "CM4_USB={{user `cm4_usb`}}"
+      ]
+    }
+  ]
+}
