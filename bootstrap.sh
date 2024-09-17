@@ -139,10 +139,6 @@ else
   usermod -aG wheel "alarm"
 fi
 
-# copy the throttle script
-mv /tmp/throttle.sh "/home/${username}/throttle.sh"
-chmod +x "/home/${username}/throttle.sh"
-
 # Setup user ssh keys
 mkdir /home/"${username}"/.ssh
 touch "/home/${username}/.ssh/authorized_keys"
