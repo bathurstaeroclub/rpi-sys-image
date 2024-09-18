@@ -71,6 +71,11 @@
       "destination": "/tmp/mac-host.service"
     },
     {
+      "type": "file",
+      "source": "artefacts/build-librtlsdr.sh",
+      "destination": "/tmp/build-librtlsdr.sh"
+    },
+    {
       "type": "shell",
       "script": "bootstrap.sh",
       "environment_vars": [

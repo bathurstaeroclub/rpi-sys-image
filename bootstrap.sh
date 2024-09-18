@@ -90,6 +90,9 @@ echo "${hostname}" > /etc/hostname
 # Install stuff
 pacman -S vim htop parted sudo --noconfirm --needed
 
+# Build & Install stuff
+/tmp/build-librtlsdr.sh
+
 # Sometimes the network file is missing for some unknown reason
 if [ ! -f "/etc/systemd/network/en.network" ] ; then
   echo 'Fixing eth -> en network file'
